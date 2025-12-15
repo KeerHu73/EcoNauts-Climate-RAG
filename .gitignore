@@ -1,0 +1,40 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+
+# =========================
+# VS Code / Codespaces
+# =========================
+.vscode/
+
+# =========================
+# Vector stores / indexes
+# (generated, large, not for GitHub)
+# =========================
+vector_store/
+faiss_index/
+*.faiss
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+
+# =========================
+# OS files
+# =========================
+.DS_Store
