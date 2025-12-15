@@ -1,45 +1,48 @@
-import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Any
+import pandas as pd
+
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from embeddings import get_embedding_model
+from vector_store import FaissVectorStore
 
 DATA_PATH = Path("data/etl_cleaned_dataset.csv")
 
-def load_cleaned_data(path: Path = DATA_PATH) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    df = df[df["country"].isin(["United States", "Canada"])]
-    df = df[df["year"] >= 1990]
-    return df
 
-def build_country_documents(df: pd.DataFrame) -> List[Dict[str, Any]]:
+def main():
+    # 1. Load CSV
+    df = pd.read_csv(DATA_PATH)
+
     documents = []
-    for country, sub in df.groupby("country"):
-        sub = sub.sort_values("year")
-        lines = []
-        lines.append(f"Country: {country}")
-        lines.append(f"Years covered: {sub['year'].min()}–{sub['year'].max()}")
-        lines.append("")
-        lines.append("Annual CO2 emissions (million tonnes):")
-        for _, row in sub.iterrows():
-            lines.append(f"{int(row['year'])}: {row['co2']:.2f}")
-        lines.append("")
-        lines.append("Annual temperature anomaly (°C):")
-        for _, row in sub.iterrows():
-            lines.append(f"{int(row['year'])}: {row['temp_anomaly']:.3f}")
+    for _, row in df.iterrows():
+        text = " ".join(str(v) for v in row.values if pd.notna(v))
+        documents.append(
+            Document(
+                page_content=text,
+                metadata={"source": "etl_cleaned_dataset.csv"}
+            )
+        )
 
-        doc = {
-            "text": "\n".join(lines),
-            "metadata": {
-                "source": "etl_cleaned_dataset.csv",
-                "country": country
-            }
-        }
-        documents.append(doc)
+    print(f"Loaded {len(documents)} documents")
 
-    return documents
+    # 2. Chunk documents
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=150
+    )
+    chunks = splitter.split_documents(documents)
+    print(f"Created {len(chunks)} chunks")
+
+    # 3. Build embeddings + FAISS
+    embedding = get_embedding_model()
+    store = FaissVectorStore(embedding=embedding)
+    store.add_documents(chunks)
+
+    # 4. Save index
+    store.save_local()
+    print("FAISS index saved to vector_store/faiss_index")
+
 
 if __name__ == "__main__":
-    df = load_cleaned_data()
-    docs = build_country_documents(df)
-    print(f"Built {len(docs)} documents")
-    print("\nExample document:\n")
-    print(docs[0]["text"][:1200])
+    main()

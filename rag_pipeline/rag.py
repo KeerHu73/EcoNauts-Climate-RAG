@@ -79,3 +79,42 @@ Answer:
         answer = self.generate_answer(question, docs)
         sources = self.retriever.build_sources(docs)
         return {"answer": answer, "sources": sources}
+
+
+_PIPELINE: RAGPipeline | None = None
+
+
+def _build_pipeline() -> RAGPipeline:
+    """
+    Build the RAG pipeline once.
+    Loads FAISS index and reuses it across API calls.
+    """
+    # 1) Load embedding model
+    from .embeddings import get_embedding_model
+    embedding = get_embedding_model()
+
+    # 2) Load FAISS vector store
+    from .vector_store import FaissVectorStore
+    store = FaissVectorStore.load_local(embedding=embedding)
+
+    # 3) Build retriever + pipeline
+    retriever = SimpleRetriever(vector_store=store)
+    pipeline = RAGPipeline(retriever=retriever)
+
+    return pipeline
+
+
+def get_pipeline() -> RAGPipeline:
+    global _PIPELINE
+    if _PIPELINE is None:
+        _PIPELINE = _build_pipeline()
+    return _PIPELINE
+
+
+def answer_question(question: str, k: int = 3):
+    """
+    Thin wrapper used by Flask API.
+    Returns: {"answer": ..., "sources": [...]}
+    """
+    pipeline = get_pipeline()
+    return pipeline.ask(question, k=k)

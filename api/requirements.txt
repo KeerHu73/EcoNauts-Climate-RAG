@@ -1,0 +1,16 @@
+flask
+
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+
+faiss-cpu
+
+sentence-transformers
+transformers
+torch
+
+pandas
+pypdf
+
